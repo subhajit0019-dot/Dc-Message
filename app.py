@@ -216,6 +216,8 @@ def validate_data(data):
     return None
 
 @app.route("/")
+@app.route("/api/index")
+@app.route("/api")
 def index():
     """Renders the main web app interface."""
     return render_template("index.html")
