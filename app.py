@@ -2,7 +2,7 @@ import json
 import os
 import re
 import requests
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(
@@ -270,6 +270,11 @@ def validate_data(data):
 def index():
     """Renders the main web app interface."""
     return render_template("index.html")
+
+@app.route("/static/<path:filename>", endpoint="custom_static")
+def custom_static(filename):
+    """Explicit static file handler for Vercel Serverless environment."""
+    return send_from_directory(os.path.join(BASE_DIR, "static"), filename)
 
 @app.route("/api/preview", methods=["POST"])
 def api_preview():

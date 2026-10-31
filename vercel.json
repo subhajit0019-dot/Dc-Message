@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/static/(.*)",
+      "destination": "/api/index?__vercel_subpath=/static/$1"
+    },
+    {
       "source": "/",
       "destination": "/api/index"
     }
