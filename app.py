@@ -149,12 +149,30 @@ def build_components_v2_payload(
         btn_label = btn.get("label", "").strip()
         btn_url = btn.get("url", "").strip()
         if btn_label and btn_url:
-            action_row_components.append({
+            btn_comp = {
                 "type": 2,   # Button component
                 "style": 5,  # Link button (opens URL)
                 "label": btn_label,
                 "url": btn_url
-            })
+            }
+
+            # Check if button contains custom Discord emoji (<:name:id> or <a:name:id>)
+            emoji_match = re.search(r'<(a)?:([a-zA-Z0-9_]+):(\d+)>', btn_label)
+            if emoji_match:
+                is_animated = bool(emoji_match.group(1))
+                e_name = emoji_match.group(2)
+                e_id = emoji_match.group(3)
+                btn_comp["emoji"] = {
+                    "id": e_id,
+                    "name": e_name,
+                    "animated": is_animated
+                }
+                cleaned_label = re.sub(r'<(a)?:[a-zA-Z0-9_]+:\d+>', '', btn_label).strip()
+                btn_comp["label"] = cleaned_label if cleaned_label else e_name
+            elif "emoji" in btn and isinstance(btn["emoji"], dict):
+                btn_comp["emoji"] = btn["emoji"]
+
+            action_row_components.append(btn_comp)
 
     if action_row_components:
         if show_divider:

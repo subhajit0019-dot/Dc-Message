@@ -201,8 +201,14 @@
                             <button type="button" class="emoji-btn" data-emoji="🚀" title="Rocket">🚀</button>
                             <button type="button" class="emoji-btn" data-emoji="🛡️" title="Shield">🛡️</button>
                             <button type="button" class="emoji-btn" data-emoji="⭐" title="Star">⭐</button>
+                            <button type="button" id="btn-open-custom-emoji" class="emoji-btn btn-custom-pill" title="Custom Discord Emojis">
+                                <i class="fa-solid fa-icons"></i> Custom
+                            </button>
                         </div>
                     </div>
+
+                    <!-- Quick Custom Emojis Strip -->
+                    <div class="quick-custom-emojis-bar" id="quick-custom-emojis-bar"></div>
 
                     <!-- Quick Template Snippets Toolbar -->
                     <div class="template-snippets-bar">
@@ -542,6 +548,68 @@
                 <button type="button" id="btn-confirm-export" class="btn btn-primary btn-glow">
                     <i class="fa-solid fa-download"></i> Export JSON
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Emoji Inserter & Library Modal -->
+    <div id="custom-emoji-modal" class="modal-overlay">
+        <div class="modal-card glass-modal custom-emoji-dialog">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-icons"></i> Custom Discord Emojis</h3>
+                <button type="button" class="modal-close-btn" id="btn-close-custom-emoji-modal" title="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Paste any server's custom or animated emoji tag, link, or ID to insert into your webhook message or buttons.</p>
+                
+                <div class="form-group mb-2">
+                    <label for="custom-emoji-input">Paste Emoji Tag, Link or ID</label>
+                    <div class="input-with-action">
+                        <input type="text" id="custom-emoji-input" placeholder="e.g. <:nitro:853314984784429076> or <a:dance:987654321> or 853314984784429076">
+                        <button type="button" id="btn-parse-custom-emoji" class="btn btn-secondary btn-compact">Inspect</button>
+                    </div>
+                    <small class="hint-text">Tip: In any Discord chat, type <code>\:your_emoji:</code> to copy its exact <code>&lt;:name:id&gt;</code> code!</small>
+                </div>
+
+                <!-- Live Custom Emoji Preview Box -->
+                <div class="custom-emoji-preview-box" id="custom-emoji-preview-box">
+                    <div class="emoji-preview-visual">
+                        <img id="emoji-preview-img" src="https://cdn.discordapp.com/emojis/853314984784429076.png?size=64" alt="Emoji Preview">
+                    </div>
+                    <div class="emoji-preview-details">
+                        <div class="emoji-name-line">
+                            <span id="emoji-preview-name" class="emoji-name-text">:discord:</span>
+                            <span id="emoji-preview-badge" class="badge-tag">Static</span>
+                        </div>
+                        <div class="emoji-code-line">
+                            <code id="emoji-preview-code">&lt;:discord:853314984784429076&gt;</code>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="emoji-insert-actions mb-3">
+                    <button type="button" id="btn-insert-emoji-desc" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-align-left"></i> Insert in Description
+                    </button>
+                    <button type="button" id="btn-insert-emoji-title" class="btn btn-secondary btn-sm">
+                        <i class="fa-solid fa-heading"></i> Insert in Title
+                    </button>
+                    <button type="button" id="btn-save-custom-emoji" class="btn btn-accent btn-sm">
+                        <i class="fa-solid fa-star"></i> Save to Library
+                    </button>
+                </div>
+
+                <!-- Saved Custom Emojis Library -->
+                <div class="form-group mb-0">
+                    <div class="flex-between align-center mb-1">
+                        <label class="mb-0"><i class="fa-solid fa-bookmark"></i> Saved Custom Emojis</label>
+                        <span class="text-xs text-muted" id="saved-emoji-count">0 saved</span>
+                    </div>
+                    <div class="custom-emoji-library-grid" id="custom-emoji-library-grid"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-close-emoji-dialog" class="btn btn-secondary">Done</button>
             </div>
         </div>
     </div>

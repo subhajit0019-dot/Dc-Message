@@ -608,6 +608,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Subtext (-# text)
         html = html.replace(/^-# (.*$)/gim, '<div class="v2-subtext-line">$1</div>');
 
+        // Discord Custom Emojis: <:name:id> or <a:name:id>
+        html = html.replace(/&lt;a:([a-zA-Z0-9_]+):(\d+)&gt;/g, '<img class="discord-custom-emoji animated" src="https://cdn.discordapp.com/emojis/$2.gif?size=48&quality=lossless" alt=":$1:" title=":$1:">');
+        html = html.replace(/&lt;:([a-zA-Z0-9_]+):(\d+)&gt;/g, '<img class="discord-custom-emoji" src="https://cdn.discordapp.com/emojis/$2.png?size=48&quality=lossless" alt=":$1:" title=":$1:">');
+
         // Discord Mentions: <@userid>, <#channelid>, <@&roleid>
         html = html.replace(/&lt;@!?(\d+)&gt;/g, '<span class="discord-mention">@user</span>');
         html = html.replace(/&lt;#(\d+)&gt;/g, '<span class="discord-mention">#channel</span>');
@@ -728,12 +732,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const actionRow = [];
             data.buttons_data.forEach(btn => {
                 if (btn.label && btn.url) {
-                    actionRow.push({
+                    const btnComp = {
                         type: 2,
                         style: 5,
                         label: btn.label.trim(),
                         url: btn.url.trim()
-                    });
+                    };
+                    const emojiMatch = btn.label.match(/<(a)?:([a-zA-Z0-9_]+):(\d+)>/);
+                    if (emojiMatch) {
+                        const isAnim = Boolean(emojiMatch[1]);
+                        const eName = emojiMatch[2];
+                        const eId = emojiMatch[3];
+                        btnComp.emoji = {
+                            id: eId,
+                            name: eName,
+                            animated: isAnim
+                        };
+                        const cleaned = btn.label.replace(/<(a)?:[a-zA-Z0-9_]+:\d+>/, '').trim();
+                        btnComp.label = cleaned || eName;
+                    } else if (btn.emoji) {
+                        btnComp.emoji = btn.emoji;
+                    }
+                    actionRow.push(btnComp);
                 }
             });
             if (actionRow.length > 0) {
@@ -812,10 +832,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. Header & Thumbnail
         if (v2TitleDisplay) {
             if (data.title) {
-                v2TitleDisplay.textContent = `# ${data.title}`;
+                let formattedTitle = escapeHtml(data.title);
+                formattedTitle = formattedTitle.replace(/&lt;a:([a-zA-Z0-9_]+):(\d+)&gt;/g, '<img class="discord-custom-emoji animated" src="https://cdn.discordapp.com/emojis/$2.gif?size=48&quality=lossless" alt=":$1:" title=":$1:">');
+                formattedTitle = formattedTitle.replace(/&lt;:([a-zA-Z0-9_]+):(\d+)&gt;/g, '<img class="discord-custom-emoji" src="https://cdn.discordapp.com/emojis/$2.png?size=48&quality=lossless" alt=":$1:" title=":$1:">');
+                v2TitleDisplay.innerHTML = `# ${formattedTitle}`;
                 v2TitleDisplay.style.display = 'block';
             } else {
-                v2TitleDisplay.textContent = '';
+                v2TitleDisplay.innerHTML = '';
                 v2TitleDisplay.style.display = 'none';
             }
         }
@@ -880,12 +903,23 @@ document.addEventListener('DOMContentLoaded', () => {
             v2ButtonsRow.innerHTML = '';
             if (data.buttons_data.length > 0) {
                 data.buttons_data.forEach(btn => {
+                    const btnLabel = (btn.label || '').trim();
                     const a = document.createElement('a');
                     a.className = 'v2-btn-link';
                     a.href = btn.url || '#';
                     a.target = '_blank';
                     a.rel = 'noopener noreferrer';
-                    a.innerHTML = `<span>${escapeHtml(btn.label)}</span> <i class="fa-solid fa-arrow-up-right-from-square"></i>`;
+
+                    const emojiMatch = btnLabel.match(/<(a)?:([a-zA-Z0-9_]+):(\d+)>/);
+                    if (emojiMatch) {
+                        const isAnim = Boolean(emojiMatch[1]);
+                        const eName = emojiMatch[2];
+                        const eId = emojiMatch[3];
+                        const cleaned = btnLabel.replace(/<(a)?:[a-zA-Z0-9_]+:\d+>/, '').trim();
+                        a.innerHTML = `<img class="discord-btn-emoji" src="https://cdn.discordapp.com/emojis/${eId}.${isAnim ? 'gif' : 'png'}?size=32" alt=":${eName}:"> <span>${escapeHtml(cleaned || eName)}</span> <i class="fa-solid fa-arrow-up-right-from-square"></i>`;
+                    } else {
+                        a.innerHTML = `<span>${escapeHtml(btnLabel)}</span> <i class="fa-solid fa-arrow-up-right-from-square"></i>`;
+                    }
                     v2ButtonsRow.appendChild(a);
                 });
                 v2ActionRowWrapper.style.display = 'block';
@@ -967,42 +1001,80 @@ document.addEventListener('DOMContentLoaded', () => {
                 logBodyText.textContent = `Sending POST request to Discord Webhook...`;
             }
 
+            const payload = buildLocalComponentsV2Payload(data);
+
+            const directSendToDiscord = async () => {
+                const targetUrl = data.webhook_url.trim() + (data.webhook_url.includes('?') ? '&with_components=true' : '?with_components=true');
+                const discordRes = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (discordRes.ok) {
+                    showToast('Components V2 message sent successfully to Discord!', 'success');
+                    if (logStatusBadge) {
+                        logStatusBadge.className = 'log-badge success';
+                        logStatusBadge.textContent = `HTTP ${discordRes.status || 204} OK`;
+                    }
+                    if (logBodyText) {
+                        logBodyText.innerHTML = `<span style="color: var(--discord-green)">✔ Components V2 payload successfully delivered to Discord!</span>`;
+                    }
+                    saveState();
+                    return true;
+                } else {
+                    const errText = await discordRes.text();
+                    throw new Error(`Discord API Error (${discordRes.status}): ${errText.slice(0, 300)}`);
+                }
+            };
+
             fetch('/api/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
-            .then(res => res.json())
-            .then(res => {
-                if (res.success) {
-                    showToast(res.message, 'success');
+            .then(async res => {
+                const text = await res.text();
+                let json = null;
+                try {
+                    json = JSON.parse(text);
+                } catch(e) {
+                    // Non-JSON response from server proxy -> direct client dispatch
+                    return directSendToDiscord();
+                }
+
+                if (json.success) {
+                    showToast(json.message, 'success');
                     if (logStatusBadge) {
                         logStatusBadge.className = 'log-badge success';
-                        logStatusBadge.textContent = `HTTP ${res.status_code || 204} OK`;
+                        logStatusBadge.textContent = `HTTP ${json.status_code || 204} OK`;
                     }
                     if (logBodyText) {
                         logBodyText.innerHTML = `<span style="color: var(--discord-green)">✔ Components V2 payload successfully delivered to Discord!</span>`;
                     }
                     saveState();
                 } else {
-                    showToast(res.error, 'error');
+                    showToast(json.error, 'error');
                     if (logStatusBadge) {
                         logStatusBadge.className = 'log-badge error';
                         logStatusBadge.textContent = `Failed`;
                     }
                     if (logBodyText) {
-                        logBodyText.innerHTML = `<span style="color: var(--discord-red)">❌ ${escapeHtml(res.error)}</span>`;
+                        logBodyText.innerHTML = `<span style="color: var(--discord-red)">❌ ${escapeHtml(json.error)}</span>`;
                     }
                 }
             })
-            .catch(err => {
-                showToast('Network / Server Error: ' + err.message, 'error');
-                if (logStatusBadge) {
-                    logStatusBadge.className = 'log-badge error';
-                    logStatusBadge.textContent = 'Error';
-                }
-                if (logBodyText) {
-                    logBodyText.textContent = err.message;
+            .catch(async err => {
+                try {
+                    await directSendToDiscord();
+                } catch(fallbackErr) {
+                    showToast('Error: ' + fallbackErr.message, 'error');
+                    if (logStatusBadge) {
+                        logStatusBadge.className = 'log-badge error';
+                        logStatusBadge.textContent = 'Error';
+                    }
+                    if (logBodyText) {
+                        logBodyText.innerHTML = `<span style="color: var(--discord-red)">❌ ${escapeHtml(fallbackErr.message)}</span>`;
+                    }
                 }
             })
             .finally(() => {
@@ -1903,6 +1975,275 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // ==========================================
+    // DISCORD CUSTOM EMOJI CONTROLLER & LIBRARY
+    // ==========================================
+    const CUSTOM_EMOJI_STORAGE_KEY = 'dc_custom_emojis_v1';
+    const DEFAULT_CUSTOM_EMOJIS = [
+        { name: "discord", id: "853314984784429076", animated: false },
+        { name: "nitro", id: "853314984784429077", animated: false },
+        { name: "verified", id: "853314984784429078", animated: false },
+        { name: "pepe_cool", id: "853314984784429080", animated: false }
+    ];
+
+    const btnOpenCustomEmoji = document.getElementById('btn-open-custom-emoji');
+    const customEmojiModal = document.getElementById('custom-emoji-modal');
+    const btnCloseCustomEmojiModal = document.getElementById('btn-close-custom-emoji-modal');
+    const btnCloseEmojiDialog = document.getElementById('btn-close-emoji-dialog');
+    const customEmojiInput = document.getElementById('custom-emoji-input');
+    const btnParseCustomEmoji = document.getElementById('btn-parse-custom-emoji');
+    const emojiPreviewImg = document.getElementById('emoji-preview-img');
+    const emojiPreviewName = document.getElementById('emoji-preview-name');
+    const emojiPreviewBadge = document.getElementById('emoji-preview-badge');
+    const emojiPreviewCode = document.getElementById('emoji-preview-code');
+    const btnInsertEmojiDesc = document.getElementById('btn-insert-emoji-desc');
+    const btnInsertEmojiTitle = document.getElementById('btn-insert-emoji-title');
+    const btnSaveCustomEmoji = document.getElementById('btn-save-custom-emoji');
+    const customEmojiLibraryGrid = document.getElementById('custom-emoji-library-grid');
+    const savedEmojiCount = document.getElementById('saved-emoji-count');
+    const quickCustomEmojisBar = document.getElementById('quick-custom-emojis-bar');
+
+    let currentParsedEmoji = {
+        name: "discord",
+        id: "853314984784429076",
+        animated: false
+    };
+
+    function getCustomEmojis() {
+        try {
+            const raw = localStorage.getItem(CUSTOM_EMOJI_STORAGE_KEY);
+            if (!raw) {
+                localStorage.setItem(CUSTOM_EMOJI_STORAGE_KEY, JSON.stringify(DEFAULT_CUSTOM_EMOJIS));
+                return JSON.parse(JSON.stringify(DEFAULT_CUSTOM_EMOJIS));
+            }
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch(e) {
+            return DEFAULT_CUSTOM_EMOJIS;
+        }
+    }
+
+    function saveCustomEmojisList(list) {
+        try {
+            localStorage.setItem(CUSTOM_EMOJI_STORAGE_KEY, JSON.stringify(list));
+        } catch(e) {}
+    }
+
+    function parseCustomEmojiString(raw) {
+        if (!raw || !raw.trim()) return null;
+        raw = raw.trim();
+
+        // 1. Match standard <:name:id> or <a:name:id>
+        const tagMatch = raw.match(/<(a)?:([a-zA-Z0-9_]+):(\d+)>/);
+        if (tagMatch) {
+            return {
+                animated: Boolean(tagMatch[1]),
+                name: tagMatch[2],
+                id: tagMatch[3]
+            };
+        }
+
+        // 2. Match URL: https://cdn.discordapp.com/emojis/123456789.(png|gif|webp)
+        const urlMatch = raw.match(/cdn\.discordapp\.com\/emojis\/(\d+)\.(gif|png|webp)/i);
+        if (urlMatch) {
+            return {
+                animated: urlMatch[2].toLowerCase() === 'gif',
+                name: `emoji_${urlMatch[1].slice(-4)}`,
+                id: urlMatch[1]
+            };
+        }
+
+        // 3. Match name:id
+        const pairMatch = raw.match(/^([a-zA-Z0-9_]+):(\d+)$/);
+        if (pairMatch) {
+            return {
+                animated: false,
+                name: pairMatch[1],
+                id: pairMatch[2]
+            };
+        }
+
+        // 4. Pure snowflake ID
+        const idMatch = raw.match(/^(\d{17,21})$/);
+        if (idMatch) {
+            return {
+                animated: false,
+                name: `emoji_${idMatch[1].slice(-4)}`,
+                id: idMatch[1]
+            };
+        }
+
+        return null;
+    }
+
+    function updateEmojiPreview(emoji) {
+        if (!emoji || !emoji.id) return;
+        currentParsedEmoji = emoji;
+        const ext = emoji.animated ? 'gif' : 'png';
+        const url = `https://cdn.discordapp.com/emojis/${emoji.id}.${ext}?size=64&quality=lossless`;
+        if (emojiPreviewImg) emojiPreviewImg.src = url;
+        if (emojiPreviewName) emojiPreviewName.textContent = `:${emoji.name}:`;
+        if (emojiPreviewBadge) {
+            emojiPreviewBadge.textContent = emoji.animated ? 'Animated' : 'Static';
+            emojiPreviewBadge.className = `badge-tag ${emoji.animated ? 'animated' : ''}`;
+        }
+        if (emojiPreviewCode) {
+            const code = emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
+            emojiPreviewCode.textContent = code;
+        }
+    }
+
+    function insertTextAtCursor(inputElement, textToInsert) {
+        if (!inputElement) return;
+        inputElement.focus();
+        const start = inputElement.selectionStart !== undefined ? inputElement.selectionStart : inputElement.value.length;
+        const end = inputElement.selectionEnd !== undefined ? inputElement.selectionEnd : inputElement.value.length;
+        const val = inputElement.value;
+        inputElement.value = val.substring(0, start) + textToInsert + val.substring(end);
+        inputElement.selectionStart = inputElement.selectionEnd = start + textToInsert.length;
+        updateLivePreview();
+        updateCharCounter();
+    }
+
+    function renderCustomEmojiLibrary() {
+        const list = getCustomEmojis();
+        if (savedEmojiCount) savedEmojiCount.textContent = `${list.length} saved`;
+        if (customEmojiLibraryGrid) {
+            customEmojiLibraryGrid.innerHTML = '';
+            list.forEach((emoji, idx) => {
+                const card = document.createElement('div');
+                card.className = 'lib-emoji-card';
+                card.title = `Click to inspect :${emoji.name}:`;
+                const ext = emoji.animated ? 'gif' : 'png';
+                const code = emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
+                card.innerHTML = `
+                    <button type="button" class="lib-emoji-del" data-index="${idx}" title="Remove">&times;</button>
+                    <img src="https://cdn.discordapp.com/emojis/${emoji.id}.${ext}?size=48&quality=lossless" alt=":${emoji.name}:">
+                    <span class="lib-emoji-name">${escapeHtml(emoji.name)}</span>
+                `;
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('.lib-emoji-del')) return;
+                    updateEmojiPreview(emoji);
+                    if (customEmojiInput) customEmojiInput.value = code;
+                });
+                customEmojiLibraryGrid.appendChild(card);
+            });
+
+            customEmojiLibraryGrid.querySelectorAll('.lib-emoji-del').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.dataset.index, 10);
+                    const currentList = getCustomEmojis();
+                    currentList.splice(idx, 1);
+                    saveCustomEmojisList(currentList);
+                    renderCustomEmojiLibrary();
+                    renderQuickCustomEmojisBar();
+                });
+            });
+        }
+        renderQuickCustomEmojisBar();
+    }
+
+    function renderQuickCustomEmojisBar() {
+        if (!quickCustomEmojisBar) return;
+        const list = getCustomEmojis();
+        quickCustomEmojisBar.innerHTML = '';
+        if (list.length === 0) {
+            quickCustomEmojisBar.style.display = 'none';
+            return;
+        }
+        quickCustomEmojisBar.style.display = 'flex';
+        list.slice(0, 14).forEach(emoji => {
+            const ext = emoji.animated ? 'gif' : 'png';
+            const code = emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'quick-custom-emoji-btn';
+            btn.title = `Click to insert :${emoji.name}:`;
+            btn.innerHTML = `<img src="https://cdn.discordapp.com/emojis/${emoji.id}.${ext}?size=32&quality=lossless" alt=":${emoji.name}:">`;
+            btn.addEventListener('click', () => {
+                insertTextAtCursor(mainContentArea, code);
+                showToast(`Inserted :${emoji.name}:`, 'info');
+            });
+            quickCustomEmojisBar.appendChild(btn);
+        });
+    }
+
+    if (btnOpenCustomEmoji && customEmojiModal) {
+        btnOpenCustomEmoji.addEventListener('click', () => {
+            customEmojiModal.classList.add('active');
+            renderCustomEmojiLibrary();
+            if (customEmojiInput) customEmojiInput.focus();
+        });
+    }
+
+    const closeCustomEmojiModal = () => {
+        if (customEmojiModal) customEmojiModal.classList.remove('active');
+    };
+    if (btnCloseCustomEmojiModal) btnCloseCustomEmojiModal.addEventListener('click', closeCustomEmojiModal);
+    if (btnCloseEmojiDialog) btnCloseEmojiDialog.addEventListener('click', closeCustomEmojiModal);
+
+    if (btnParseCustomEmoji && customEmojiInput) {
+        const doParse = () => {
+            const parsed = parseCustomEmojiString(customEmojiInput.value);
+            if (parsed) {
+                updateEmojiPreview(parsed);
+                showToast(`Parsed :${parsed.name}:!`, 'success');
+            } else if (customEmojiInput.value.trim()) {
+                showToast('Could not parse emoji. Use <:name:id> format', 'error');
+            }
+        };
+        btnParseCustomEmoji.addEventListener('click', doParse);
+        customEmojiInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                doParse();
+            }
+        });
+        customEmojiInput.addEventListener('input', () => {
+            const parsed = parseCustomEmojiString(customEmojiInput.value);
+            if (parsed) updateEmojiPreview(parsed);
+        });
+    }
+
+    if (btnInsertEmojiDesc) {
+        btnInsertEmojiDesc.addEventListener('click', () => {
+            const code = currentParsedEmoji.animated ? 
+                `<a:${currentParsedEmoji.name}:${currentParsedEmoji.id}>` : 
+                `<:${currentParsedEmoji.name}:${currentParsedEmoji.id}>`;
+            insertTextAtCursor(mainContentArea, code);
+            closeCustomEmojiModal();
+            showToast(`Inserted :${currentParsedEmoji.name}: into description!`, 'success');
+        });
+    }
+
+    if (btnInsertEmojiTitle) {
+        btnInsertEmojiTitle.addEventListener('click', () => {
+            const code = currentParsedEmoji.animated ? 
+                `<a:${currentParsedEmoji.name}:${currentParsedEmoji.id}>` : 
+                `<:${currentParsedEmoji.name}:${currentParsedEmoji.id}>`;
+            insertTextAtCursor(titleInput, code);
+            closeCustomEmojiModal();
+            showToast(`Inserted :${currentParsedEmoji.name}: into title!`, 'success');
+        });
+    }
+
+    if (btnSaveCustomEmoji) {
+        btnSaveCustomEmoji.addEventListener('click', () => {
+            if (!currentParsedEmoji || !currentParsedEmoji.id) return;
+            const list = getCustomEmojis();
+            const exists = list.some(e => e.id === currentParsedEmoji.id);
+            if (!exists) {
+                list.unshift(currentParsedEmoji);
+                saveCustomEmojisList(list);
+                renderCustomEmojiLibrary();
+                showToast(`Saved :${currentParsedEmoji.name}: to library!`, 'success');
+            } else {
+                showToast(`:${currentParsedEmoji.name}: is already in library!`, 'info');
+            }
+        });
+    }
+
     // Toast Notification System
     function showToast(message, type = 'info') {
         const container = document.getElementById('toast-container');
@@ -1945,4 +2286,5 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCharCounter();
     renderSavedBar();
     renderVaultDrawer();
+    renderCustomEmojiLibrary();
 });
