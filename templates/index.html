@@ -565,24 +565,27 @@
                 <div class="form-group mb-2">
                     <label for="custom-emoji-input">Paste Emoji Tag, Link or ID</label>
                     <div class="input-with-action">
-                        <input type="text" id="custom-emoji-input" placeholder="e.g. <:nitro:853314984784429076> or <a:dance:987654321> or 853314984784429076">
-                        <button type="button" id="btn-parse-custom-emoji" class="btn btn-secondary btn-compact">Inspect</button>
+                        <input type="text" id="custom-emoji-input" placeholder="e.g. <:3913_PogU:1256958143934758955>">
+                        <button type="button" id="btn-save-custom-emoji" class="btn btn-primary btn-compact">
+                            <i class="fa-solid fa-bookmark"></i> Save Emoji
+                        </button>
                     </div>
-                    <small class="hint-text">Tip: In any Discord chat, type <code>\:your_emoji:</code> to copy its exact <code>&lt;:name:id&gt;</code> code!</small>
+                    <small class="hint-text">Tip: In Discord, type <code>\:emoji:</code> to get its <code>&lt;:name:id&gt;</code> code!</small>
                 </div>
 
                 <!-- Live Custom Emoji Preview Box -->
                 <div class="custom-emoji-preview-box" id="custom-emoji-preview-box">
                     <div class="emoji-preview-visual">
-                        <img id="emoji-preview-img" src="https://cdn.discordapp.com/emojis/853314984784429076.png?size=64" alt="Emoji Preview">
+                        <img id="emoji-preview-img" src="" alt="Emoji Preview" style="display:none;">
+                        <span id="emoji-preview-placeholder" style="color: var(--text-muted); font-size: 0.8rem;"><i class="fa-solid fa-icons"></i></span>
                     </div>
                     <div class="emoji-preview-details">
                         <div class="emoji-name-line">
-                            <span id="emoji-preview-name" class="emoji-name-text">:discord:</span>
-                            <span id="emoji-preview-badge" class="badge-tag">Static</span>
+                            <span id="emoji-preview-name" class="emoji-name-text">No Emoji Selected</span>
+                            <span id="emoji-preview-badge" class="badge-tag" style="display:none;">Static</span>
                         </div>
                         <div class="emoji-code-line">
-                            <code id="emoji-preview-code">&lt;:discord:853314984784429076&gt;</code>
+                            <code id="emoji-preview-code">Paste an emoji tag above</code>
                         </div>
                     </div>
                 </div>
@@ -594,8 +597,8 @@
                     <button type="button" id="btn-insert-emoji-title" class="btn btn-secondary btn-sm">
                         <i class="fa-solid fa-heading"></i> Insert in Title
                     </button>
-                    <button type="button" id="btn-save-custom-emoji" class="btn btn-accent btn-sm">
-                        <i class="fa-solid fa-star"></i> Save to Library
+                    <button type="button" id="btn-copy-emoji-code" class="btn btn-secondary btn-sm">
+                        <i class="fa-solid fa-copy"></i> Copy Tag
                     </button>
                 </div>
 
@@ -603,7 +606,10 @@
                 <div class="form-group mb-0">
                     <div class="flex-between align-center mb-1">
                         <label class="mb-0"><i class="fa-solid fa-bookmark"></i> Saved Custom Emojis</label>
-                        <span class="text-xs text-muted" id="saved-emoji-count">0 saved</span>
+                        <div class="saved-emoji-header-actions">
+                            <span class="text-xs text-muted" id="saved-emoji-count">0 saved</span>
+                            <button type="button" id="btn-clear-all-emojis" class="btn-text-danger" title="Clear all saved emojis">Clear All</button>
+                        </div>
                     </div>
                     <div class="custom-emoji-library-grid" id="custom-emoji-library-grid"></div>
                 </div>

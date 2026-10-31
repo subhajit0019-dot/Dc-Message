@@ -93,10 +93,14 @@ def build_components_v2_payload(
     padding = ("⠀" * w_spaces) if expand_width and w_spaces > 0 else ""
 
     # 1. Heading & Optional Thumbnail Image (Section component type 9 with Type 11 Thumbnail accessory)
-    if title and title.strip():
+    has_title = bool(title and title.strip())
+    padding_consumed = False
+
+    if has_title:
         header_text = f"# {title.strip()}"
         if padding:
             header_text += f" {padding}"
+            padding_consumed = True
 
         if thumbnail_url and (thumbnail_url.startswith("http://") or thumbnail_url.startswith("https://")):
             container_children.append({
@@ -113,12 +117,34 @@ def build_components_v2_payload(
             })
         else:
             container_children.append({"type": 10, "content": header_text})
-    elif padding:
-        container_children.append({"type": 10, "content": padding})
+    elif thumbnail_url and (thumbnail_url.startswith("http://") or thumbnail_url.startswith("https://")):
+        # If thumbnail exists without title, keep section accessory
+        container_children.append({
+            "type": 9,
+            "components": [
+                {"type": 10, "content": padding if padding else "⠀"}
+            ],
+            "accessory": {
+                "type": 11,
+                "media": {
+                    "url": thumbnail_url.strip()
+                }
+            }
+        })
+        padding_consumed = True
 
     # 2. Main Content (TextDisplay, full width)
     if main_content and main_content.strip():
-        container_children.append({"type": 10, "content": main_content.strip()})
+        content_text = main_content.strip()
+        # When header is blank, attach padding inline to the first line so width expands without top gap
+        if padding and not padding_consumed:
+            lines = content_text.split("\n", 1)
+            if len(lines) == 2:
+                content_text = f"{lines[0]} {padding}\n{lines[1]}"
+            else:
+                content_text = f"{content_text} {padding}"
+            padding_consumed = True
+        container_children.append({"type": 10, "content": content_text})
 
     # 3. Banner Image / Media Component (Type 12) above Price & Buttons
     if banner_url and (banner_url.startswith("http://") or banner_url.startswith("https://")):
