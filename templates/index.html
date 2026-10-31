@@ -140,11 +140,19 @@
                     <div class="form-group">
                         <div class="flex-between align-center mb-1">
                             <label>Accent Color <span class="accent-hex-badge" id="hex-badge">#00F0FF</span></label>
+                            <div class="color-toggle-inline">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="enable_accent_color" checked>
+                                    <span class="slider"></span>
+                                </label>
+                                <label for="enable_accent_color" class="checkbox-label">Enable</label>
+                            </div>
                         </div>
-                        <div class="color-picker-wrapper">
+                        <div class="color-picker-wrapper" id="color-picker-wrapper">
                             <input type="color" id="accent_color" value="#00F0FF">
                             <input type="text" id="accent_color_hex" value="#00F0FF" class="hex-input">
                             <div class="color-swatches" id="color-swatches-container">
+                                <button type="button" class="swatch swatch-none" id="swatch-none" data-color="none" title="No Accent Color (Disable)"><i class="fa-solid fa-ban"></i></button>
                                 <button type="button" class="swatch active" data-color="#00F0FF" style="background:#00F0FF" title="Cyber Cyan"></button>
                                 <button type="button" class="swatch" data-color="#5865F2" style="background:#5865F2" title="Blurple"></button>
                                 <button type="button" class="swatch" data-color="#00FF9D" style="background:#00FF9D" title="Neon Emerald"></button>

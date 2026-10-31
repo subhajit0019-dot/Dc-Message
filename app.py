@@ -17,14 +17,14 @@ DEFAULT_ACCENT_COLOR = 0x00A2C7
 DEFAULT_WIDTH_SPACES = 22
 
 def hex_to_int(hex_str):
-    """Converts hex color string like #00A2C7 to integer."""
-    if not hex_str:
-        return DEFAULT_ACCENT_COLOR
-    hex_clean = hex_str.lstrip('#')
+    """Converts hex color string like #00A2C7 to integer, or returns None if disabled/empty."""
+    if not hex_str or str(hex_str).strip().lower() in ("none", "null", "false"):
+        return None
+    hex_clean = str(hex_str).lstrip('#').strip()
     try:
         return int(hex_clean, 16)
     except ValueError:
-        return DEFAULT_ACCENT_COLOR
+        return None
 
 def resolve_direct_image_url(url):
     """
@@ -167,9 +167,14 @@ def build_components_v2_payload(
     # Wrap everything inside one Container (the V2 replacement for an embed card)
     container = {
         "type": 17,  # Container
-        "accent_color": accent_color if isinstance(accent_color, int) else hex_to_int(accent_color),
         "components": container_children
     }
+
+    # Set accent_color only if enabled and valid
+    if accent_color is not None and str(accent_color).strip().lower() not in ("", "none", "null", "false"):
+        color_val = accent_color if isinstance(accent_color, int) else hex_to_int(accent_color)
+        if color_val is not None:
+            container["accent_color"] = color_val
 
     payload = {
         "flags": COMPONENTS_V2_FLAG,
@@ -226,6 +231,10 @@ def index():
 def api_preview():
     """Returns the generated Components V2 payload JSON for live preview."""
     data = request.json or {}
+    enable_accent = data.get("enable_accent_color", True)
+    raw_accent = data.get("accent_color")
+    accent_val = None if (not enable_accent or raw_accent in (None, "", "none", "null", False)) else raw_accent
+
     payload = build_components_v2_payload(
         title=data.get("title", ""),
         main_content=data.get("main_content", ""),
@@ -237,7 +246,7 @@ def api_preview():
         banner_url=data.get("banner_url", ""),
         username=data.get("username", ""),
         avatar_url=data.get("avatar_url", ""),
-        accent_color=hex_to_int(data.get("accent_color", "#00A2C7")),
+        accent_color=accent_val,
         price_prefix=data.get("price_prefix", "Price: "),
         price_subtext=data.get("price_subtext", True),
         show_divider=data.get("show_divider", True)
@@ -254,6 +263,10 @@ def api_send():
         return jsonify({"success": False, "error": error}), 400
 
     webhook_url = data.get("webhook_url", "").strip()
+    enable_accent = data.get("enable_accent_color", True)
+    raw_accent = data.get("accent_color")
+    accent_val = None if (not enable_accent or raw_accent in (None, "", "none", "null", False)) else raw_accent
+
     payload = build_components_v2_payload(
         title=data.get("title", ""),
         main_content=data.get("main_content", ""),
@@ -265,7 +278,7 @@ def api_send():
         banner_url=data.get("banner_url", ""),
         username=data.get("username", ""),
         avatar_url=data.get("avatar_url", ""),
-        accent_color=hex_to_int(data.get("accent_color", "#00A2C7")),
+        accent_color=accent_val,
         price_prefix=data.get("price_prefix", "Price: "),
         price_subtext=data.get("price_subtext", True),
         show_divider=data.get("show_divider", True)

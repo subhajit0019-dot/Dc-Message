@@ -28,6 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const accentColorPicker = document.getElementById('accent_color');
     const accentColorHex = document.getElementById('accent_color_hex');
     const hexBadge = document.getElementById('hex-badge');
+    const enableAccentCheck = document.getElementById('enable_accent_color');
+    const colorPickerWrapper = document.getElementById('color-picker-wrapper');
+    const swatchNoneBtn = document.getElementById('swatch-none');
     const swatches = document.querySelectorAll('.swatch');
     
     const showDividerCheck = document.getElementById('show_divider');
@@ -242,6 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mainContentArea) mainContentArea.value = '';
             if (pricePrefixInput) pricePrefixInput.value = 'Price: ';
             if (priceTextInput) priceTextInput.value = '';
+            if (enableAccentCheck) enableAccentCheck.checked = true;
+            setColorAccent('#00F0FF');
             buttonsData = [];
             renderButtonsConfig();
             updateLivePreview();
@@ -353,24 +358,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update Color Accent & Swatches
     function setColorAccent(color) {
-        if (!color) return;
+        if (!color || color === 'none' || color === 'null') {
+            if (enableAccentCheck) enableAccentCheck.checked = false;
+            updateAccentColorState();
+            return;
+        }
+        if (enableAccentCheck) enableAccentCheck.checked = true;
         const uppercaseHex = color.toUpperCase();
         if (accentColorPicker) accentColorPicker.value = uppercaseHex;
         if (accentColorHex) accentColorHex.value = uppercaseHex;
-        if (hexBadge) hexBadge.textContent = uppercaseHex;
+        updateAccentColorState();
+    }
 
-        swatches.forEach(s => {
-            if (s.dataset.color && s.dataset.color.toUpperCase() === uppercaseHex) {
-                s.classList.add('active');
+    function updateAccentColorState() {
+        const isEnabled = enableAccentCheck ? enableAccentCheck.checked : true;
+        if (colorPickerWrapper) {
+            colorPickerWrapper.classList.toggle('disabled', !isEnabled);
+        }
+
+        if (hexBadge) {
+            if (isEnabled) {
+                const hexVal = accentColorHex ? accentColorHex.value.toUpperCase() : '#00F0FF';
+                hexBadge.textContent = hexVal;
+                hexBadge.classList.remove('badge-disabled');
+                hexBadge.style.color = hexVal;
+                hexBadge.style.borderColor = hexVal;
             } else {
-                s.classList.remove('active');
+                hexBadge.textContent = 'None';
+                hexBadge.classList.add('badge-disabled');
+                hexBadge.style.color = '';
+                hexBadge.style.borderColor = '';
+            }
+        }
+
+        const curHex = accentColorHex ? accentColorHex.value.toUpperCase() : '#00F0FF';
+        document.querySelectorAll('.swatch').forEach(s => {
+            if (!isEnabled) {
+                if (s.dataset.color === 'none') {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            } else {
+                if (s.dataset.color && s.dataset.color.toUpperCase() === curHex) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
             }
         });
+
         updateLivePreview();
+    }
+
+    if (enableAccentCheck) {
+        enableAccentCheck.addEventListener('change', updateAccentColorState);
     }
 
     if (accentColorPicker) {
         accentColorPicker.addEventListener('input', (e) => {
+            if (enableAccentCheck) enableAccentCheck.checked = true;
             setColorAccent(e.target.value);
         });
     }
@@ -378,14 +425,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (accentColorHex) {
         accentColorHex.addEventListener('input', (e) => {
             if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                if (enableAccentCheck) enableAccentCheck.checked = true;
                 setColorAccent(e.target.value);
             }
         });
     }
 
-    swatches.forEach(swatch => {
+    document.querySelectorAll('.swatch').forEach(swatch => {
         swatch.addEventListener('click', () => {
-            setColorAccent(swatch.dataset.color);
+            if (swatch.dataset.color === 'none') {
+                if (enableAccentCheck) enableAccentCheck.checked = false;
+                updateAccentColorState();
+            } else {
+                if (enableAccentCheck) enableAccentCheck.checked = true;
+                setColorAccent(swatch.dataset.color);
+            }
         });
     });
 
@@ -590,6 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Collect Input Form Data
     function getFormData() {
+        const isAccentEnabled = enableAccentCheck ? enableAccentCheck.checked : true;
         return {
             webhook_url: webhookUrlInput ? webhookUrlInput.value.trim() : '',
             username: botUsernameInput ? botUsernameInput.value.trim() : '',
@@ -597,7 +652,8 @@ document.addEventListener('DOMContentLoaded', () => {
             title: titleInput ? titleInput.value.trim() : '',
             thumbnail_url: thumbnailInput ? thumbnailInput.value.trim() : '',
             banner_url: bannerInput ? bannerInput.value.trim() : '',
-            accent_color: accentColorPicker ? accentColorPicker.value : '#00F0FF',
+            enable_accent_color: isAccentEnabled,
+            accent_color: isAccentEnabled ? (accentColorPicker ? accentColorPicker.value : '#00F0FF') : null,
             expand_width: expandWidthCheck ? expandWidthCheck.checked : true,
             show_divider: showDividerCheck ? showDividerCheck.checked : true,
             width_spaces: widthSpacesRange ? parseInt(widthSpacesRange.value, 10) : 22,
@@ -691,15 +747,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        const containerObj = {
+            type: 17,
+            components: containerChildren
+        };
+
+        if (data.enable_accent_color !== false && data.accent_color) {
+            let colorInt = 0x00A2C7;
+            try {
+                colorInt = parseInt(data.accent_color.replace('#', ''), 16) || 0x00A2C7;
+            } catch(e) {}
+            containerObj.accent_color = colorInt;
+        }
+
         const payload = {
             flags: 32768, // 1 << 15 (IS_COMPONENTS_V2)
-            components: [
-                {
-                    type: 17,
-                    accent_color: colorInt,
-                    components: containerChildren
-                }
-            ]
+            components: [containerObj]
         };
 
         if (data.username && data.username.trim()) payload.username = data.username.trim();
@@ -727,7 +790,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. Container Accent & Width
         if (v2Container) {
-            v2Container.style.borderLeftColor = data.accent_color;
+            if (data.enable_accent_color !== false && data.accent_color) {
+                v2Container.style.borderLeftColor = data.accent_color;
+                v2Container.style.borderLeftWidth = '4px';
+                v2Container.style.borderLeftStyle = 'solid';
+            } else {
+                v2Container.style.borderLeftColor = 'transparent';
+                v2Container.style.borderLeftWidth = '0px';
+                v2Container.style.borderLeftStyle = 'none';
+            }
             if (data.expand_width && data.width_spaces > 0) {
                 const calculatedWidth = Math.min(540, Math.max(320, 300 + data.width_spaces * 4));
                 v2Container.style.width = '100%';
@@ -1136,7 +1207,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (titleInput) titleInput.value = data.title || '';
         if (thumbnailInput) thumbnailInput.value = data.thumbnail_url || '';
         if (bannerInput) bannerInput.value = data.banner_url || '';
-        if (accentColorPicker) setColorAccent(data.accent_color || '#00F0FF');
+        if (data.enable_accent_color === false || data.accent_color === null || data.accent_color === 'none') {
+            setColorAccent(null);
+        } else if (accentColorPicker) {
+            setColorAccent(data.accent_color || '#00F0FF');
+        }
         if (showDividerCheck) showDividerCheck.checked = data.show_divider !== undefined ? data.show_divider : true;
         if (expandWidthCheck) expandWidthCheck.checked = data.expand_width !== undefined ? data.expand_width : true;
         if (widthSpacesRange) {
@@ -1777,7 +1852,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (config.title !== undefined && titleInput) titleInput.value = config.title;
                     if (config.thumbnail_url !== undefined && thumbnailInput) thumbnailInput.value = config.thumbnail_url;
                     if (config.banner_url !== undefined && bannerInput) bannerInput.value = config.banner_url;
-                    if (config.accent_color !== undefined) {
+                    if (config.enable_accent_color === false || config.accent_color === null || config.accent_color === 'none') {
+                        setColorAccent(null);
+                    } else if (config.accent_color !== undefined) {
                         setColorAccent(config.accent_color);
                     }
                     if (config.show_divider !== undefined && showDividerCheck) {
