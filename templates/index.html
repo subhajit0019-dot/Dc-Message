@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Webhook Sender - Components V2 Studio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=gg+sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="discord-theme">
+    <!-- Navbar / Header -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo-icon glow-pulse">
+                <i class="fa-brands fa-discord"></i>
+            </div>
+            <div class="logo-title">
+                <h1>Webhook Studio <span class="v2-badge">Components V2</span></h1>
+                <p class="subtitle"><i class="fa-solid fa-bolt"></i> Ultra-Premium Discord Payload Generator</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <button id="btn-open-vault" class="btn btn-accent btn-compact" title="Open Saved Messages Vault">
+                <i class="fa-solid fa-folder-open"></i> Saved Library <span id="vault-count-badge" class="badge-count">0</span>
+            </button>
+            <button id="btn-save-current" class="btn btn-primary btn-compact btn-glow" title="Save current message to library">
+                <i class="fa-solid fa-floppy-disk"></i> Save Message
+            </button>
+            <button id="btn-reset-form" class="btn btn-danger btn-compact" title="Clear all fields">
+                <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="app-main">
+        <!-- Left Panel: Form Controls -->
+        <section class="panel editor-panel">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-sliders"></i> Message Studio</h2>
+                <div class="panel-header-actions">
+                    <button type="button" id="btn-export-json" class="btn btn-sm btn-secondary" title="Export Config JSON File">
+                        <i class="fa-solid fa-file-export"></i> Export JSON
+                    </button>
+                    <button type="button" id="btn-import-json" class="btn btn-sm btn-secondary" title="Import Config JSON File">
+                        <i class="fa-solid fa-file-import"></i> Import JSON
+                    </button>
+                    <input type="file" id="import-json-file" accept=".json" style="display: none;">
+                </div>
+            </div>
+
+            <!-- In-Website Saved Messages Bar (Quick Access Shelf) -->
+            <div class="saved-bar-wrapper" id="saved-bar-wrapper">
+                <div class="saved-bar-header">
+                    <div class="saved-bar-title-group">
+                        <span class="saved-bar-title"><i class="fa-solid fa-bookmark text-accent"></i> Saved Messages</span>
+                        <span class="active-badge" id="active-preset-badge" style="display: none;">
+                            <i class="fa-solid fa-circle-check"></i> <span id="active-preset-name">None</span>
+                        </span>
+                    </div>
+                    <div class="saved-bar-actions">
+                        <button type="button" id="btn-bar-save-new" class="btn-text-action highlight" title="Save current form as new preset">
+                            <i class="fa-solid fa-plus"></i> Save Current
+                        </button>
+                        <button type="button" id="btn-bar-update-current" class="btn-text-action update-btn" title="Update active saved message" style="display: none;">
+                            <i class="fa-solid fa-arrows-rotate"></i> Update Preset
+                        </button>
+                        <button type="button" id="btn-bar-view-all" class="btn-text-action" title="Open full Vault Drawer">
+                            <i class="fa-solid fa-folder-tree"></i> Vault (<span id="quick-bar-count">0</span>)
+                        </button>
+                    </div>
+                </div>
+                <div class="saved-bar-scroll" id="saved-bar-pills">
+                    <!-- Pills dynamically injected here -->
+                </div>
+            </div>
+
+            <form id="webhook-form" onsubmit="return false;" class="compact-form">
+                <!-- Section 1: Webhook & Bot Identity (HIGH-TECH CYBERPUNK STYLE) -->
+                <div class="form-section webhook-hero-section">
+                    <div class="section-title">
+                        <span><i class="fa-solid fa-bolt-lightning text-accent"></i> Discord Webhook Endpoint</span>
+                        <span class="security-badge"><i class="fa-solid fa-shield-halved"></i> Encrypted</span>
+                    </div>
+                    <div class="form-group">
+                        <div class="flex-between align-center">
+                            <label for="webhook_url">Webhook Target URL <span class="required">*</span></label>
+                            <span class="url-status-text" id="url-status"><i class="fa-solid fa-circle-notch fa-spin"></i> Disconnected</span>
+                        </div>
+                        <div class="input-with-icon webhook-input-wrapper">
+                            <i class="fa-solid fa-link input-left-icon"></i>
+                            <input type="text" id="webhook_url" name="webhook_url" placeholder="https://discord.com/api/webhooks/12345/abcdef..." autocomplete="off" required>
+                            <div class="input-actions-group">
+                                <button type="button" id="btn-toggle-webhook" class="icon-btn" title="Toggle Visibility">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                                <button type="button" id="btn-clear-webhook" class="icon-btn" title="Clear URL">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="bot_username">Bot Override Name <span class="optional">(Optional)</span></label>
+                            <input type="text" id="bot_username" placeholder="e.g. Mod Menu Bot">
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="bot_avatar">Bot Avatar URL <span class="optional">(Optional)</span></label>
+                            <input type="url" id="bot_avatar" placeholder="https://i.imgur.com/...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Embed Container Settings -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <span><i class="fa-solid fa-layer-group"></i> Container & Divider Options</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="title">Header Title <span class="required">*</span></label>
+                        <input type="text" id="title" value="Mod Menu V7A" placeholder="Container title text">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="thumbnail_url">Thumbnail URL <span class="optional">(Icon)</span></label>
+                            <input type="url" id="thumbnail_url" placeholder="https://domain.com/small_icon.png">
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="banner_url">Banner URL <span class="optional">(Media)</span></label>
+                            <input type="url" id="banner_url" placeholder="https://domain.com/banner.png">
+                        </div>
+                    </div>
+
+                    <!-- Color Picker & Quick Palettes -->
+                    <div class="form-group">
+                        <div class="flex-between align-center mb-1">
+                            <label>Accent Color <span class="accent-hex-badge" id="hex-badge">#00F0FF</span></label>
+                        </div>
+                        <div class="color-picker-wrapper">
+                            <input type="color" id="accent_color" value="#00F0FF">
+                            <input type="text" id="accent_color_hex" value="#00F0FF" class="hex-input">
+                            <div class="color-swatches" id="color-swatches-container">
+                                <button type="button" class="swatch active" data-color="#00F0FF" style="background:#00F0FF" title="Cyber Cyan"></button>
+                                <button type="button" class="swatch" data-color="#5865F2" style="background:#5865F2" title="Blurple"></button>
+                                <button type="button" class="swatch" data-color="#00FF9D" style="background:#00FF9D" title="Neon Emerald"></button>
+                                <button type="button" class="swatch" data-color="#FFD700" style="background:#FFD700" title="Electric Gold"></button>
+                                <button type="button" class="swatch" data-color="#FF3366" style="background:#FF3366" title="Crimson Red"></button>
+                                <button type="button" class="swatch" data-color="#FF007F" style="background:#FF007F" title="Electric Pink"></button>
+                                <button type="button" class="swatch" data-color="#9D4EDD" style="background:#9D4EDD" title="Neon Purple"></button>
+                                <button type="button" class="swatch" data-color="#111214" style="background:#111214; border-color:#333;" title="OLED Dark"></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Layout & Divider Toggles -->
+                    <div class="form-row align-center wrap-row">
+                        <div class="form-group checkbox-group">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="show_divider" checked>
+                                <span class="slider"></span>
+                            </label>
+                            <label for="show_divider" class="checkbox-label">Show Divider Lines</label>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="expand_width" checked>
+                                <span class="slider"></span>
+                            </label>
+                            <label for="expand_width" class="checkbox-label">Expand Width</label>
+                        </div>
+                        <div class="form-group flex-1 min-w-140">
+                            <label for="width_spaces">Padding: <span id="padding-val" class="highlight-val">22</span></label>
+                            <input type="range" id="width_spaces" min="0" max="60" value="22" class="range-input">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Description & Custom Templates -->
+                <div class="form-section">
+                    <div class="section-title flex-between">
+                        <span><i class="fa-solid fa-align-left"></i> Description & Text</span>
+                        <div class="emoji-quick-bar">
+                            <button type="button" class="emoji-btn" data-emoji="⚡" title="Lightning">⚡</button>
+                            <button type="button" class="emoji-btn" data-emoji="🔥" title="Fire">🔥</button>
+                            <button type="button" class="emoji-btn" data-emoji="🛒" title="Cart">🛒</button>
+                            <button type="button" class="emoji-btn" data-emoji="💬" title="Chat">💬</button>
+                            <button type="button" class="emoji-btn" data-emoji="💎" title="Diamond">💎</button>
+                            <button type="button" class="emoji-btn" data-emoji="🚀" title="Rocket">🚀</button>
+                            <button type="button" class="emoji-btn" data-emoji="🛡️" title="Shield">🛡️</button>
+                            <button type="button" class="emoji-btn" data-emoji="⭐" title="Star">⭐</button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Template Snippets Toolbar -->
+                    <div class="template-snippets-bar">
+                        <span class="template-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Templates:</span>
+                        <button type="button" class="template-btn" data-template="modmenu"><i class="fa-solid fa-gamepad"></i> Mod Menu</button>
+                        <button type="button" class="template-btn" data-template="store"><i class="fa-solid fa-shop"></i> Store</button>
+                        <button type="button" class="template-btn" data-template="update"><i class="fa-solid fa-rocket"></i> Update</button>
+                        <button type="button" class="template-btn" data-template="support"><i class="fa-solid fa-headset"></i> Support</button>
+                        <button type="button" class="template-btn" data-template="rules"><i class="fa-solid fa-scroll"></i> Rules</button>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="markdown-toolbar">
+                            <button type="button" data-md="## " title="Header 2"><i class="fa-solid fa-heading"></i></button>
+                            <button type="button" data-md="**bold**" title="Bold Text"><i class="fa-solid fa-bold"></i></button>
+                            <button type="button" data-md="*italic*" title="Italic Text"><i class="fa-solid fa-italic"></i></button>
+                            <button type="button" data-md="• " title="Bullet List"><i class="fa-solid fa-list-ul"></i></button>
+                            <button type="button" data-md="`code`" title="Inline Code"><i class="fa-solid fa-code"></i></button>
+                            <button type="button" data-md="-# Subtext" title="Subtext"><i class="fa-solid fa-font"></i></button>
+                        </div>
+                        <textarea id="main_content" rows="5" placeholder="Type your message with Discord markdown...">## Memory
+• Silent Aim
+• Aimbot Lite
+
+## Exploits
+• Ghost
+• Speed Hack
+
+## ESP
+• Show Name
+• Show Distance
+• Show Health</textarea>
+                        <div class="textarea-footer">
+                            <span id="char-counter" class="char-counter">0 chars | 0 lines</span>
+                            <button type="button" id="btn-copy-md" class="text-action-btn" title="Copy Raw Markdown Text"><i class="fa-solid fa-copy"></i> Copy Text</button>
+                        </div>
+                    </div>
+
+                    <!-- Customizable Footer / Price Section -->
+                    <div class="form-section sub-section">
+                        <div class="section-title text-sm">
+                            <i class="fa-solid fa-pen-to-square"></i> Customizable Footer & Price
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label for="price_prefix">Prefix Label <span class="optional">(Custom)</span></label>
+                                <input type="text" id="price_prefix" value="Price: " placeholder="e.g. Price: , Plan: ">
+                            </div>
+                            <div class="form-group flex-2">
+                                <label for="price_text">Price / Footer Text</label>
+                                <input type="text" id="price_text" value="De R$ 10,00 a R$ 100,00" placeholder="e.g. $19.99 / Lifetime">
+                            </div>
+                        </div>
+                        <div class="form-group checkbox-group mt-1">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="price_subtext" checked>
+                                <span class="slider"></span>
+                            </label>
+                            <label for="price_subtext" class="checkbox-label">Small Subtext Style (<code>-# Prefix</code>)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Dynamic Buttons -->
+                <div class="form-section">
+                    <div class="section-title flex-between">
+                        <span><i class="fa-solid fa-up-right-from-square"></i> Action Row Link Buttons</span>
+                        <button type="button" id="btn-add-button" class="btn btn-sm btn-accent">
+                            <i class="fa-solid fa-plus"></i> Add Button
+                        </button>
+                    </div>
+                    <div id="buttons-container" class="buttons-list">
+                        <!-- Buttons rendered dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="form-actions">
+                    <button type="button" id="btn-send-webhook" class="btn btn-primary btn-large btn-glow">
+                        <i class="fa-solid fa-paper-plane"></i> Send Webhook
+                    </button>
+                    <button type="button" id="btn-copy-json" class="btn btn-secondary">
+                        <i class="fa-solid fa-code"></i> Copy JSON
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Right Panel: Live Discord Preview & JSON Output -->
+        <section class="panel preview-panel">
+            <div class="preview-tabs-header">
+                <div class="tab-buttons">
+                    <button type="button" class="tab-btn active" data-tab="discord-preview">
+                        <i class="fa-brands fa-discord"></i> Live Discord Preview
+                    </button>
+                    <button type="button" class="tab-btn" data-tab="json-preview">
+                        <i class="fa-solid fa-code"></i> Payload JSON
+                    </button>
+                </div>
+                <div class="status-indicator" id="status-pill">
+                    <span class="dot online glow-dot"></span> Live Syncing
+                </div>
+            </div>
+
+            <!-- Tab 1: Live Discord Preview -->
+            <div id="tab-discord-preview" class="tab-content active">
+                <div class="discord-chat-container">
+                    <div class="discord-channel-header">
+                        <div class="channel-info">
+                            <i class="fa-solid fa-hashtag"></i>
+                            <span>webhook-messages</span>
+                            <span class="channel-desc">Discord Desktop Client Simulation</span>
+                        </div>
+                        <span class="preview-badge"><i class="fa-solid fa-eye"></i> Real-time</span>
+                    </div>
+
+                    <div class="discord-message-wrapper">
+                        <!-- Bot Avatar -->
+                        <div class="discord-avatar" id="prev-bot-avatar">
+                            <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot Avatar" id="prev-avatar-img">
+                        </div>
+
+                        <div class="discord-message-content">
+                            <!-- Message Header (Username + Bot Tag + Time) -->
+                            <div class="discord-author-header">
+                                <span class="discord-author-name" id="prev-bot-name">Webhook Sender</span>
+                                <span class="discord-bot-tag"><i class="fa-solid fa-check"></i> BOT</span>
+                                <span class="discord-timestamp" id="prev-timestamp">Today at 12:00 PM</span>
+                            </div>
+
+                            <!-- Discord Components V2 Compact Container -->
+                            <div class="v2-container compact-v2" id="v2-container" style="border-left-color: #00F0FF;">
+                                <!-- 1. Header & Optional Thumbnail -->
+                                <div class="v2-section" id="v2-header-section">
+                                    <div class="v2-header-text" id="v2-title-display"># Mod Menu V7A</div>
+                                    <div class="v2-thumbnail" id="v2-thumbnail-wrapper" style="display: none;">
+                                        <img src="" alt="Thumbnail" id="v2-thumbnail-img">
+                                    </div>
+                                </div>
+
+                                <!-- 2. Main Content Display -->
+                                <div class="v2-text-display" id="v2-content-display">
+                                    <!-- Markdown rendered content -->
+                                </div>
+
+                                <!-- 3. Banner Image / Media Component -->
+                                <div class="v2-banner-wrapper" id="v2-banner-wrapper" style="display: none;">
+                                    <img src="" alt="Banner" id="v2-banner-img">
+                                </div>
+
+                                <!-- 4. Customizable Price Divider & Footer -->
+                                <div class="v2-price-wrapper" id="v2-price-wrapper">
+                                    <div class="v2-divider" id="v2-price-divider"></div>
+                                    <div class="v2-subtext" id="v2-price-display">Price: De R$ 10,00 a R$ 100,00</div>
+                                </div>
+
+                                <!-- 5. Action Row Buttons -->
+                                <div class="v2-action-row-wrapper" id="v2-action-row-wrapper">
+                                    <div class="v2-divider" id="v2-buttons-divider"></div>
+                                    <div class="v2-action-row" id="v2-buttons-row">
+                                        <!-- Buttons rendered live -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Raw JSON Payload Viewer -->
+            <div id="tab-json-preview" class="tab-content">
+                <div class="json-viewer-container">
+                    <div class="json-actions">
+                        <span>Payload flags: <code>32768 (IS_COMPONENTS_V2)</code></span>
+                        <button type="button" class="btn btn-sm btn-secondary" id="btn-copy-json-tab">
+                            <i class="fa-solid fa-copy"></i> Copy Payload
+                        </button>
+                    </div>
+                    <pre class="json-code-block"><code id="json-code-display">// Generating Components V2 JSON...</code></pre>
+                </div>
+            </div>
+
+            <!-- Response / Console Log Card -->
+            <div class="response-log-card" id="response-log-card">
+                <div class="log-header">
+                    <span class="log-title"><i class="fa-solid fa-terminal"></i> Studio Console Output</span>
+                    <span id="log-status-badge" class="log-badge ready">Ready</span>
+                </div>
+                <div class="log-body" id="log-body-text">
+                    Standing by... Fill parameters and click <strong>Send Webhook</strong>.
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Save Preset Modal -->
+    <div id="save-preset-modal" class="modal-overlay">
+        <div class="modal-card glass-modal">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-floppy-disk text-accent"></i> Save Message to Website</h3>
+                <button type="button" class="modal-close-btn" id="btn-close-save-modal" title="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Save your entire message setup directly to this website's save bar. No JSON downloads needed — switch between saved designs with one click anytime!</p>
+                <div class="form-group mt-2">
+                    <label for="save-preset-name-input">Preset Name <span class="required">*</span></label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-tag input-left-icon"></i>
+                        <input type="text" id="save-preset-name-input" placeholder="e.g. Mod Menu V7A, VIP Store, Rules..." autocomplete="off">
+                    </div>
+                </div>
+                <div class="filename-suggestions">
+                    <span class="suggestion-label">Quick Tags:</span>
+                    <button type="button" class="chip-btn save-tag-chip" data-name="Mod Menu V7A">Mod Menu</button>
+                    <button type="button" class="chip-btn save-tag-chip" data-name="VIP Store Package">VIP Store</button>
+                    <button type="button" class="chip-btn save-tag-chip" data-name="Server Announcements">Announce</button>
+                    <button type="button" class="chip-btn save-tag-chip" data-name="Support Ticket Guide">Support</button>
+                    <button type="button" class="chip-btn save-tag-chip" data-name="Rules & Guidelines">Rules</button>
+                </div>
+                
+                <div class="save-options-box mt-2">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="save-opt-include-webhook" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <span class="save-opt-label">Remember Webhook URL in this preset</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cancel-save-preset" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="btn-confirm-save-preset" class="btn btn-primary btn-glow">
+                    <i class="fa-solid fa-floppy-disk"></i> Save to Bar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Preset Modal -->
+    <div id="rename-preset-modal" class="modal-overlay">
+        <div class="modal-card glass-modal">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-pen text-accent"></i> Rename Saved Message</h3>
+                <button type="button" class="modal-close-btn" id="btn-close-rename-modal" title="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Enter a new display name for this saved message preset.</p>
+                <div class="form-group mt-2">
+                    <label for="rename-preset-input">New Preset Name <span class="required">*</span></label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-tag input-left-icon"></i>
+                        <input type="text" id="rename-preset-input" placeholder="Enter new name..." autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cancel-rename-preset" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="btn-confirm-rename-preset" class="btn btn-primary btn-glow">
+                    <i class="fa-solid fa-check"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Messages Vault Drawer (Slide-out) -->
+    <div id="vault-drawer-overlay" class="drawer-overlay">
+        <div class="vault-drawer glass-drawer" id="vault-drawer">
+            <div class="drawer-header">
+                <div class="drawer-title">
+                    <i class="fa-solid fa-box-archive text-accent"></i>
+                    <h3>Saved Messages Vault</h3>
+                    <span class="badge-count" id="vault-drawer-count">0</span>
+                </div>
+                <button type="button" class="drawer-close-btn" id="btn-close-vault-drawer" title="Close Drawer">&times;</button>
+            </div>
+
+            <div class="drawer-search-bar">
+                <div class="search-input-wrapper">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="vault-search-input" placeholder="Search saved messages (title, text, buttons)..." autocomplete="off">
+                    <button type="button" id="btn-clear-search" class="clear-search-btn" style="display: none;">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <button type="button" id="btn-drawer-quick-save" class="btn btn-sm btn-primary btn-glow" title="Save current form as new message">
+                    <i class="fa-solid fa-plus"></i> Save Current
+                </button>
+            </div>
+
+            <div class="drawer-body">
+                <div id="vault-cards-container" class="vault-cards-list">
+                    <!-- Cards dynamically populated -->
+                </div>
+            </div>
+
+            <div class="drawer-footer">
+                <div class="drawer-footer-actions">
+                    <button type="button" id="btn-vault-export-backup" class="btn-subtle-link" title="Download backup of all presets">
+                        <i class="fa-solid fa-file-arrow-down"></i> Backup All
+                    </button>
+                    <button type="button" id="btn-vault-import-backup" class="btn-subtle-link" title="Restore backup presets">
+                        <i class="fa-solid fa-file-arrow-up"></i> Restore
+                    </button>
+                    <input type="file" id="vault-import-file" accept=".json" style="display: none;">
+                    <button type="button" id="btn-vault-reset-defaults" class="btn-subtle-link danger" title="Reset to default presets">
+                        <i class="fa-solid fa-rotate-left"></i> Reset Defaults
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="modal-overlay">
+        <div class="modal-card glass-modal">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-file-export"></i> Export Configuration</h3>
+                <button type="button" class="modal-close-btn" id="btn-close-export-modal" title="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Save your webhook configuration to your PC with a custom filename so you can easily organize and import it later.</p>
+                <div class="form-group mt-2">
+                    <label for="export-filename-input">Filename <span class="required">*</span></label>
+                    <div class="input-with-extension">
+                        <input type="text" id="export-filename-input" placeholder="e.g. discord_welcome" autocomplete="off">
+                        <span class="file-ext-badge">.json</span>
+                    </div>
+                </div>
+                <div class="filename-suggestions">
+                    <span class="suggestion-label">Suggestions:</span>
+                    <button type="button" class="chip-btn" data-name="discord_welcome">discord_welcome</button>
+                    <button type="button" class="chip-btn" data-name="mod_menu_config">mod_menu_config</button>
+                    <button type="button" class="chip-btn" data-name="store_announcement">store_announcement</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cancel-export" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="btn-confirm-export" class="btn btn-primary btn-glow">
+                    <i class="fa-solid fa-download"></i> Export JSON
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
